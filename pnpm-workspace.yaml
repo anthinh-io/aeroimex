@@ -1,6 +1,9 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "backend/"
 
 allowBuilds:
+  '@apollo/protobufjs': true
   esbuild: true
+  msgpackr-extract: true
