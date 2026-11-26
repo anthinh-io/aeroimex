@@ -1,0 +1,8 @@
+{
+  "appHost": {
+    "path": "aspire-apphost/apphost.cs"
+  },
+  "features": {
+    "defaultWatchEnabled": "true"
+  }
+}
