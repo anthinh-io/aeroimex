@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Aspire: Launch AppHost",
+      "program": "${workspaceFolder}",
+      "dashboardBrowser": "openExternalBrowser",
+      "args": ["--log-level", "Information"],
+      "debuggers": {
+        "project": {
+          "console": "integratedTerminal",
+          "logging": {
+            "moduleLoad": false
+          }
+        }
+      }
+    }
+  ]
+}
