@@ -5,7 +5,7 @@
 
 ## 1. Câu hỏi và bối cảnh
 
-Backend của sản phẩm là một ứng dụng NestJS, hiện mới là bộ khung. Sản phẩm là SaaS nhiều tenant cho các đại lý hải quan Việt Nam; mỗi **Agency** là một tenant. Các dependency backend đã khai báo gồm `@nestjs/typeorm` 12, `typeorm` 1.1, `@nestjs/event-emitter` 12 và `@nestjs/bullmq` 12, chạy trên NestJS 12.
+Backend của sản phẩm là một ứng dụng NestJS, hiện mới là bộ khung. Sản phẩm là SaaS cho các đại lý hải quan Việt Nam; mỗi **Agency** là một **Organization**: đơn vị thuê hệ thống và ranh giới dữ liệu, tương ứng khái niệm tenant của ABP. Các dependency backend đã khai báo gồm `@nestjs/typeorm` 12, `typeorm` 1.1, `@nestjs/event-emitter` 12 và `@nestjs/bullmq` 12, chạy trên NestJS 12.
 
 Hai ứng viên aggregate chính:
 
@@ -14,7 +14,7 @@ Hai ứng viên aggregate chính:
 
 Bất biến tiêu biểu: một Job chỉ được đóng khi có ít nhất một Customs Declaration đã thông quan và mọi Customs Declaration còn lại đều đã thông quan hoặc đã hủy.
 
-Một khảo sát trước đó về các dự án NestJS mã nguồn mở theo DDD đã khuyến nghị cho giai đoạn MVP:
+Một khảo sát trước đó về các dự án NestJS mã nguồn mở theo DDD đã khuyến nghị:
 
 - bốn tầng `api` / `application` / `domain` / `infrastructure` trong mỗi module;
 - mô hình hóa aggregate theo kiểu rút gọn của `Sairyss/domain-driven-hexagon`: props ẩn, factory tĩnh `create()`, phương thức nghiệp vụ tự thu thập domain event, `validate()` kiểm tra bất biến;
@@ -22,7 +22,7 @@ Một khảo sát trước đó về các dự án NestJS mã nguồn mở theo 
 - repository viết riêng cho từng aggregate (không dựng repository generic), cài bằng TypeORM, có mapper giữa TypeORM entity và aggregate; truy vấn chỉ để hiển thị được phép đọc thẳng qua TypeORM trong application service;
 - chưa dùng `CommandBus`/`QueryBus`;
 - phát domain event bằng `@nestjs/event-emitter` **sau khi commit**, ngoài transaction; chuyển sang transactional outbox với BullMQ khi event không được phép mất;
-- mọi phương thức đọc của repository nhận `agencyId` bắt buộc.
+- mọi phương thức đọc của repository nhận `organizationId` bắt buộc.
 
 Tài liệu này trả lời: ABP Framework (.NET) định nghĩa từng khối xây dựng DDD ra sao; phần nào gắn với .NET/EF Core nên không mang thẳng sang NestJS + TypeORM được; NestJS có gì tương đương và còn được bảo trì; và so với khuyến nghị trên thì chỗ nào nên theo ABP, chỗ nào không.
 
@@ -117,7 +117,7 @@ Repository xóa mềm: `DeleteAsync` không xóa thật nếu entity là `ISoftD
 
 **Tương đương NestJS.** Interface repository viết tay ở `domain/`, token DI, cài đặt TypeORM ở `infrastructure/` có mapper. Không cần thư viện. Điều kiện để cài đặt này tham gia transaction xem mục 3.8.
 
-**Áp dụng cho Job.** `JobRepository.findById(agencyId, jobId)` **luôn** nạp đủ mọi Customs Declaration, vì bất biến đóng Job cần chúng. Không có tham số `includeDetails`: với aggregate ghi, nạp thiếu entity con là cách phá bất biến dễ nhất. Customs Declaration không có repository riêng, đúng quy tắc ABP.
+**Áp dụng cho Job.** `JobRepository.findById(organizationId, jobId)` **luôn** nạp đủ mọi Customs Declaration, vì bất biến đóng Job cần chúng. Không có tham số `includeDetails`: với aggregate ghi, nạp thiếu entity con là cách phá bất biến dễ nhất. Customs Declaration không có repository riêng, đúng quy tắc ABP.
 
 ### 3.5 Domain service
 
@@ -237,8 +237,8 @@ Trang adapter TypeORM tự giới thiệu `typeorm-transactional` là giải ph�
 
 **Khác biệt chạm tới repository/UoW.**
 
-1. **Ngầm định so với tường minh.** ABP lọc ngầm nhờ global query filter. TypeORM không có global filter: tính năng này vẫn là issue mở từ lâu ([typeorm#1601 "Support for scopes/global filters"](https://github.com/typeorm/typeorm/issues/1601)). Vì vậy cách của ABP không chép sang được; cách tường minh của hướng dẫn NestJS, tức là repository nhận `agencyId` (khuyến nghị trước), là cách phù hợp với TypeORM. Đổi lại, quên điều kiện thì lộ dữ liệu, nên cần lớp phòng thủ thứ hai.
-2. **Tự gán tenant khi tạo.** ABP tự gán `TenantId`. Ở NestJS, `agencyId` là tham số bắt buộc của `Job.create(...)`, do application service lấy từ phiên đăng nhập; không bao giờ lấy từ dữ liệu client gửi lên.
+1. **Ngầm định so với tường minh.** ABP lọc ngầm nhờ global query filter. TypeORM không có global filter: tính năng này vẫn là issue mở từ lâu ([typeorm#1601 "Support for scopes/global filters"](https://github.com/typeorm/typeorm/issues/1601)). Vì vậy cách của ABP không chép sang được; cách tường minh của hướng dẫn NestJS, tức là repository nhận `organizationId` (khuyến nghị trước), là cách phù hợp với TypeORM. Đổi lại, quên điều kiện thì lộ dữ liệu, nên cần lớp phòng thủ thứ hai.
+2. **Tự gán tenant khi tạo.** ABP tự gán `TenantId`. Ở NestJS, `organizationId` là tham số bắt buộc của `Job.create(...)`, do application service lấy từ phiên đăng nhập; không bao giờ lấy từ dữ liệu client gửi lên.
 3. **RLS và unit of work.** RLS của PostgreSQL thường đọc tenant từ biến phiên đặt bằng `SET LOCAL` hoặc `set_config(..., true)`; các biến này chỉ sống trong một transaction. Nếu chọn RLS, **mọi** truy vấn, kể cả đọc, phải chạy trong transaction có đặt biến đó, trái với "đọc không cần transaction" ở mục 3.8. `@nestjs-cls/transactional` làm được việc này (một interceptor hoặc hook mở transaction và đặt biến cho mọi request), nhưng đây là thay đổi ranh giới UoW, nên quyết định trong ADR về multi-tenancy, không quyết ngầm ở đây. (Điều kiện chạy của `SET LOCAL` và `set_config` là kiến thức PostgreSQL chung, tài liệu này chưa đối chiếu nguồn.)
 4. **Tắt bộ lọc.** ABP có `IDataFilter.Disable<IMultiTenant>()` cho truy vấn liên tenant (báo cáo của host). Với cách tường minh, truy vấn liên tenant là phương thức repository riêng, tên rõ nghĩa, dễ rà soát hơn một khối `using` tắt bộ lọc.
 
@@ -263,7 +263,7 @@ Trang adapter TypeORM tự giới thiệu `typeorm-transactional` là giải ph�
 1. **Thời điểm phát domain event.** ABP chạy local event handler **trong** transaction, handler lỗi thì rollback thao tác chính. Khuyến nghị trước chọn phát **sau commit**, ngoài transaction, vì handler dự kiến là tác vụ phụ (ghi lịch sử, thông báo) và không nên làm hỏng việc đổi trạng thái. Giữ lựa chọn này. Chuyển sang ngữ nghĩa của ABP chỉ khi một handler phải thay đổi dữ liệu khác một cách nguyên tử: khi đó gọi `emitAsync` bên trong method `@Transactional()` và handler dùng `txHost.tx`. Việc CLS context có được truyền vào listener của `EventEmitter2` hay không **chưa được kiểm chứng**; cần một test trước khi dựa vào nó. Hướng outbox với BullMQ (khuyến nghị trước) tương ứng transactional outbox của ABP cho distributed event.
 2. **Repository generic và `CrudAppService`.** Không dựng. Job đổi trạng thái qua phương thức nghiệp vụ, không qua "Update" chung.
 3. **`includeDetails`.** Không dùng cho repository ghi; `JobRepository` luôn nạp đủ aggregate.
-4. **Lọc tenant ngầm định.** Không chép được với TypeORM (không có global filter); giữ `agencyId` tường minh.
+4. **Lọc tenant ngầm định.** Không chép được với TypeORM (không có global filter); giữ `organizationId` tường minh.
 5. **Hạ tầng gắn với .NET:** `virtual`, constructor không tham số cho ORM, `ExtraProperties`, DTO extensible, auto API controller, interception, tự lưu thay đổi khi kết thúc UoW.
 
 ## 6. Bảng khuyến nghị
@@ -279,7 +279,7 @@ Trang adapter TypeORM tự giới thiệu `typeorm-transactional` là giải ph�
 | DTO | Không kế thừa/tham chiếu entity, không logic, không dùng lại input DTO, `PagedResultDto`, giới hạn kích thước trang | **Áp dụng** | Thuần thiết kế; validation đặt ở controller/resolver (`class-validator`), application service nhận kiểu đơn giản; bỏ DTO extensible |
 | Unit of work | Tự động theo quy ước (controller, app service, repository), ambient, GET không transaction, tự lưu thay đổi khi kết thúc | **Điều chỉnh** | Dùng `@nestjs-cls/transactional` + adapter TypeORM (được bảo trì, hỗ trợ NestJS 12 và typeorm 1.x), `@Transactional()` trên method ghi của application service; không có "tự lưu" vì TypeORM không có change tracker; không dùng `typeorm-transactional` (ngừng từ 2023) |
 | Domain event | Local event chạy trong UoW, lỗi handler thì rollback; distributed event cuối UoW hoặc qua outbox | **Bỏ qua (giữ cách cũ)** | Giữ phát sau commit bằng `@nestjs/event-emitter`, outbox BullMQ sau; chỉ chuyển sang chạy trong transaction khi có handler cần nguyên tử, sau khi kiểm chứng CLS truyền vào listener |
-| Đa tenant | `IMultiTenant`, tự gán `TenantId`, global query filter ngầm, `IDataFilter.Disable` | **Bỏ qua** | TypeORM không có global filter; theo hướng dẫn NestJS: `agencyId` tường minh trong mọi truy vấn; RLS là lớp thứ hai nhưng kéo mọi truy vấn vào transaction, cần ADR riêng |
+| Đa tenant | `IMultiTenant`, tự gán `TenantId`, global query filter ngầm, `IDataFilter.Disable` | **Bỏ qua** | TypeORM không có global filter; theo hướng dẫn NestJS: `organizationId` tường minh trong mọi truy vấn; RLS là lớp thứ hai nhưng kéo mọi truy vấn vào transaction, cần ADR riêng |
 
 ## 7. Nguồn đã đọc
 
